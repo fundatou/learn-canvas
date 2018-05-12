@@ -129,11 +129,11 @@
             // 蒙层
             ctx.fillStyle = clipColor;
             ctx.fillRect(x, y, dwidth, dheight);
-
+            ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+            
             if (clipType === 0) {
                 ctx.fillRect(Math.round(clipBoxCenterX - clwidth / 2), Math.round(clipBoxCenterY - clheight / 2), clwidth, clheight);
             } else {
-                ctx.fillStyle = 'rgba(0, 0, 0, 1)';
                 ctx.arc(clipBoxCenterX, clipBoxCenterY, clwidth / 2, 0, Math.PI*2, true);
                 ctx.fillStyle = '#000';
                 ctx.fill();
