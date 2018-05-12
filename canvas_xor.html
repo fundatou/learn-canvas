@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>canvas learning</title>
+</head>
+<body>
+    <input id="imgInput" type="file" accept=".jpg, .jpeg, .png"/>
+    <canvas id="canvas"></canvas>
+    <script>
+        // 画布尺寸
+        let container = {
+            width: 500,
+            height: 500
+        };
+        // 截图框尺寸
+        let clipBox = {
+            width: 200,
+            height: 200
+        };
+        let clipColor = 'rgba(0, 0, 0, 0.9)';
+        // 0矩形 1圆形
+        let clipType = 1;
+        let imgBase64Url = '';
+        let ctx = null;
+        // 图片原始尺寸
+        let imageInitWidth = 0;
+        let imageInitHeight = 0;
+        // 图片缩小比例
+        let imageScaleRatio = 1;
+        // 截图框尺寸
+        let clwidth = 0;
+        let clheight = 0;
+        // 截图框中心点坐标
+        let clipBoxCenterX = 0;
+        let clipBoxCenterY = 0;
+        // 截图框起始中心点坐标
+        let clcenterstartx = 0;
+        let clcenterstarty = 0;
+        let isDragging = false;
+        // 拖动起始坐标
+        let dragStartX = 0;
+        let dragStartY = 0;
+        // 最终图片画出来的尺寸
+        let dwidth = 0;
+        let dheight = 0;
+
+        if (!window.requestAnimationFrame) {
+            window.requestAnimationFrame = (fn) => {
+                setTimeout(fn, 17);
+            }
+        }
+
+        const imgInput = document.getElementById('imgInput');
+        imgInput.addEventListener('change', processImg);
+        const canvas = document.getElementById('canvas');
+        canvas.setAttribute('width', container.with || 500);
+        canvas.setAttribute('height', container.height || 500);
+        ctx = canvas.getContext('2d');
+        ctx.globalCompositeOperation = "xor";
+
+        function processImg (e) {
+            let imgFile = e.target.files[0];
+            let reader = new FileReader();
+            reader.readAsDataURL(imgFile);
+            reader.onload = (e) => {
+                imgBase64Url = e.target.result;
+                let image = new Image();
+                image.onload = () => {
+                    imageInitWidth = image.width;
+                    imageInitHeight = image.height;
+                    caculate();
+
+                    initCanvas();
+
+                    canvas.addEventListener('mousedown', dragStart);
+                    canvas.addEventListener('mouseup', dragEnd);
+                    canvas.addEventListener('mousemove', dragging);
+                };
+                image.src = imgBase64Url;
+            };
+        }
+        function caculate() {
+            let cwidth = container.width;
+            let cheight = container.height;
+            let iwidth = imageInitWidth;
+            let iheight = imageInitHeight;
+            // 当图片本身的尺寸小于画布的尺寸时图片保持原尺寸
+            if (iwidth < cwidth && iheight < cheight) {
+                dwidth = iwidth;
+                dheight = iheight;
+            } else {
+                // 画布宽长比大于图片宽长比时，定宽按比例缩小图片
+                if (iwidth / iheight > cwidth / cheight) {
+                    dwidth = cwidth;
+                    dheight = Math.round(dwidth * iheight / iwidth);
+                } else {
+                    dheight = cheight;
+                    dwidth = Math.round(dheight * iwidth / iheight);
+                }
+            }
+            // 图片缩小比例，框将跟随图片的缩小比例一起缩小
+            imageScaleRatio = dwidth / iwidth;
+        }
+        function initCanvas() {
+            // 图片作为画布背景图 
+            canvas.style.background = `url(${imgBase64Url}) center / ${dwidth}px ${dheight}px no-repeat`;
+
+            // 剪裁区域初始化
+            clwidth = Math.round(imageScaleRatio * clipBox.width);
+            clheight = Math.round(imageScaleRatio * clipBox.height);
+            clipBoxCenterX = container.width / 2;
+            clipBoxCenterY = container.height / 2;
+            clcenterstartx = clipBoxCenterX;
+            clcenterstarty = clipBoxCenterY;
+
+            moveClipBox();
+        }
+        function moveClipBox() {
+            ctx.clearRect(0, 0, container.width, container.height);
+            ctx.beginPath();
+            // 蒙层
+            ctx.fillStyle = clipColor;
+            ctx.fillRect(x, y, dwidth, dheight);
+
+            if (clipType === 0) {
+                ctx.fillRect(Math.round(clipBoxCenterX - clwidth / 2), Math.round(clipBoxCenterY - clheight / 2), clwidth, clheight);
+            } else {
+                ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+                ctx.arc(clipBoxCenterX, clipBoxCenterY, clwidth / 2, 0, Math.PI*2, true);
+                ctx.fillStyle = '#000';
+                ctx.fill();
+            }
+        }
+        
+        function dragStart(e) {
+            // 判断点击区域在截图区域内 
+            if (isDragging) 
+                return;
+            if (clipType === 1) {
+                if (Math.pow(e.offsetX - clipBoxCenterX, 2) + Math.pow(e.offsetY - clipBoxCenterY, 2) <= Math.pow(clwidth / 2, 2)) {
+                    isDragging = true;
+                }
+            } else {
+                if (Math.abs(e.offsetX - clipBoxCenterX) < clwidth / 2 && Math.abs(e.offsetY - clipBoxCenterY) < clheight / 2) {
+                    isDragging = true;
+                }
+            }
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            // 每次初始化中心点起始坐标 
+            clcenterstartx = clipBoxCenterX;
+            clcenterstarty = clipBoxCenterY;
+        }
+        function dragging(e) {
+            if (isDragging && checkInside(e.clientX, e.clientY)) {
+                window.requestAnimationFrame(moveClipBox);
+            }
+        }
+        function dragEnd(e) {
+            isDragging = false;
+        }
+        function checkInside(clientX, clientY) {
+            
+            let clcenterx = clientX - dragStartX + clcenterstartx;
+            let clcentery = clientY - dragStartY + clcenterstarty;
+            let leftTopX = Math.round(x + clwidth / 2);
+            let leftTopY = Math.round(y + clheight / 2);
+            let rightBottomX = Math.round(x + dwidth - clwidth / 2);
+            let rightBottomY = Math.round(y + dheight - clheight / 2);
+
+            if (clcenterx > leftTopX && clcenterx < rightBottomX && clcentery > leftTopY && clcentery < rightBottomY) {
+                clipBoxCenterX = clcenterx;
+                clipBoxCenterY = clcentery;
+                return true;
+            }
+            return false;
+        }
+</script>
+</body>
+</html>
+    
