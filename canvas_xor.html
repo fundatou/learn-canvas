@@ -20,7 +20,7 @@
             width: 200,
             height: 200
         };
-        let clipColor = 'rgba(0, 0, 0, 0.9)';
+        let clipColor = 'rgba(0, 0, 0, 0.5)';
         // 0矩形 1圆形
         let clipType = 1;
         let imgBase64Url = '';
@@ -46,6 +46,9 @@
         // 最终图片画出来的尺寸
         let dwidth = 0;
         let dheight = 0;
+        // 图片在画布中起始坐标
+        let x = 0;
+        let y = 0;
 
         if (!window.requestAnimationFrame) {
             window.requestAnimationFrame = (fn) => {
@@ -101,6 +104,8 @@
                     dwidth = Math.round(dheight * iwidth / iheight);
                 }
             }
+            x = Math.round((cwidth - dwidth) / 2);
+            y = Math.round((cheight - dheight) / 2);
             // 图片缩小比例，框将跟随图片的缩小比例一起缩小
             imageScaleRatio = dwidth / iwidth;
         }
